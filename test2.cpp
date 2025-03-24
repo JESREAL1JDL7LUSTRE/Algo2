@@ -1,6 +1,7 @@
 #include <bits/stdc++.h>
 #include <omp.h>
 using namespace std;
+
 #define INF INT_MAX
 #define PARTITIONS 4  // Number of partitions
 
@@ -10,10 +11,10 @@ class Dinic {
     };
     int V;
     vector<vector<Edge>> adj;
-    vector<int> level, ptr;
+    vector<int> level;
 
 public:
-    Dinic(int V) : V(V), adj(V), level(V), ptr(V) {}
+    Dinic(int V) : V(V), adj(V), level(V) {}
 
     void addEdge(int u, int v, int cap) {
         adj[u].push_back({v, 0, cap, (int)adj[v].size()});
@@ -39,28 +40,37 @@ public:
         return level[t] != -1;
     }
 
-    int dfs(int u, int t, int flow) {
-        if (u == t) return flow;
-        for (int &i = ptr[u]; i < adj[u].size(); i++) {
-            auto &e = adj[u][i];
-            if (level[e.v] == level[u] + 1 && e.flow < e.cap) {
-                int pushed = dfs(e.v, t, min(flow, e.cap - e.flow));
-                if (pushed > 0) {
-                    e.flow += pushed;
-                    adj[e.v][e.rev].flow -= pushed;
-                    return pushed;
+    int tabulation_flow(int s, int t) {
+        vector<int> dp(V, 0); // dp[u] stores max flow from u to t
+        queue<int> q;
+        dp[s] = INF;
+        q.push(s);
+
+        while (!q.empty()) {
+            int u = q.front();
+            q.pop();
+
+            for (auto &e : adj[u]) {
+                if (level[e.v] == level[u] + 1 && e.flow < e.cap) {
+                    int available_flow = min(dp[u], e.cap - e.flow);
+                    
+                    if (available_flow > 0 && dp[e.v] == 0) {
+                        dp[e.v] += available_flow;
+                        e.flow += available_flow;
+                        adj[e.v][e.rev].flow -= available_flow;
+                        q.push(e.v);
+                    }
                 }
             }
         }
-        return 0;
+        return dp[t]; // Max flow to sink
     }
 
     int maxFlow(int s, int t) {
         int flow = 0;
         while (bfs(s, t)) {
-            fill(ptr.begin(), ptr.end(), 0);
             int pushed;
-            while ((pushed = dfs(s, t, INF)) > 0) {
+            while ((pushed = tabulation_flow(s, t)) > 0) {
                 flow += pushed;
             }
         }
@@ -83,14 +93,11 @@ void partitionGraph(vector<vector<int>> &partitions, int V, int P) {
 
 int main() {
     int V = 1e5 + 1;
-    //int V = 200000 + 1;
-    //int V = 250000 + 1;
     cout << "Number of nodes: " << V << endl;
-    int S = V, T = V + 1; // Super Source and Super Sink
-    V += 2; // Update total nodes
+    int S = V, T = V + 1;
+    V += 2;
     Dinic dinic(V);
 
-    // Partition graph
     vector<vector<int>> partitions(PARTITIONS);
     partitionGraph(partitions, V - 2, PARTITIONS);
 
@@ -101,14 +108,13 @@ int main() {
         if (i + 2 < V - 2) dinic.addEdge(i, i + 2, rand() % 50 + 1);
     }
 
-    // Connect super source and sinks to partitions
     for (int i = 0; i < PARTITIONS; i++) {
         int start = partitions[i].front();
         int end = partitions[i].back();
-        dinic.addEdge(S, start, INF); // Super Source → Partition Sources
-        dinic.addEdge(end, T, INF);   // Partition Sinks → Super Sink
+        dinic.addEdge(S, start, INF);
+        dinic.addEdge(end, T, INF);
     }
 
-    cout << "Max Flow (Partitioned Dinic's Algorithm): " << dinic.maxFlow(S, T) << endl;
+    cout << "Max Flow (Tabulation Dinic's Algorithm): " << dinic.maxFlow(S, T) << endl;
     return 0;
 }
