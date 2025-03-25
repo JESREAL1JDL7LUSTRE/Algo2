@@ -1,158 +1,115 @@
-#include <iostream>
-#include <vector>
-#include <queue>
-#include <algorithm>
-#include <limits>
-#include <iostream>
-#include <queue>
-#include <climits>
-#include <cstring>
-
+#include <bits/stdc++.h>
+#include <thread>
+#include <atomic>
 using namespace std;
-#define V 6  
-const int INF = numeric_limits<int>::max();
-const int SMALL_GRAPH_THRESHOLD = 100; 
 
-int widestPath(int s, int t, const vector<vector<int>> &res, vector<int>& parent) {
-    int n = res.size();
-    vector<int> bottleneck(n, 0);
-    // Use a max-heap where each element is (bottleneck, vertex)
-    priority_queue<pair<int,int>> pq;
-    bottleneck[s] = INF;
-    parent.assign(n, -1);
-    pq.push({bottleneck[s], s});
+#define INF INT_MAX
 
-    while(!pq.empty()){
-        int curFlow = pq.top().first;
-        int u = pq.top().second;
-        pq.pop();
-
-        // If we reached t, we can return the flow (but we still continue; 
-        // in practice, the algorithm stops when t is extracted)
-        if(u == t)
-            return bottleneck[t];
-
-        for (int v = 0; v < n; v++){
-            if (res[u][v] > 0) {
-                // The new bottleneck is the minimum of the flow to u and edge u->v capacity.
-                int newFlow = min(curFlow, res[u][v]);
-                if(newFlow > bottleneck[v]) {
-                    bottleneck[v] = newFlow;
-                    parent[v] = u;
-                    pq.push({bottleneck[v], v});
-                }
-            }
-        }
-    }
-    return bottleneck[t]; // if t is unreachable, bottleneck[t] remains 0.
-}
-
-// Ford-Fulkerson using the widest path (modified Dijkstra) to find augmenting paths.
-int fordFulkerson(const vector<vector<int>> &capacity, int s, int t) {
-    int n = capacity.size();
-    // Initialize residual graph as a copy of capacity.
-    vector<vector<int>> res = capacity;
-    int maxFlow = 0;
-    vector<int> parent(n);
-
-    while (true) {
-        // Find the augmenting path with maximum bottleneck using modified Dijkstra.
-        int flow = widestPath(s, t, res, parent);
-        if (flow == 0) break; // no augmenting path exists
-
-        maxFlow += flow;
-
-        // Trace back from t to s updating the residual capacities.
-        int cur = t;
-        while (cur != s) {
-            int prev = parent[cur];
-            res[prev][cur] -= flow;
-            res[cur][prev] += flow; // add reverse edge
-            cur = prev;
-        }
-    }
-    return maxFlow;
-}
-
-bool bfs(const vector<vector<int>>& residualGraph, int source, int sink, vector<int>& parent) {
-    vector<bool> visited(residualGraph.size(), false);
-    queue<int> q;
-    q.push(source);
-    visited[source] = true;
-    parent[source] = -1;
-
-    while (!q.empty()) {
-        int u = q.front();
-        q.pop();
-
-        for (int v = 0; v < V; v++) {
-            if (!visited[v] && residualGraph[u][v] > 0) {
-                parent[v] = u;
-                visited[v] = true;
-                q.push(v);
-
-                if (v == sink) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false; 
-}
-
-int edmondsKarp(const vector<vector<int>>& graph, int source, int sink) {
-    vector<vector<int>> residualGraph = graph;
-    int n = graph.size();
-    vector<int> parent(n);
-    int maxFlow = 0; 
-    while (bfs(residualGraph, source, sink, parent)) {
-        int pathFlow = INT_MAX;
-
-        for (int v = sink; v != source; v = parent[v]) {
-            int u = parent[v];
-            pathFlow = min(pathFlow, residualGraph[u][v]);
-        }
-
-        for (int v = sink; v != source; v = parent[v]) {
-            int u = parent[v];
-            residualGraph[u][v] -= pathFlow;
-            residualGraph[v][u] += pathFlow; 
-        }
-
-        maxFlow += pathFlow;
-    }
-
-    return maxFlow;
-}
-
-// Hybrid algorithm: chooses Ford-Fulkerson with widestPath for small graphs,
-// and Edmonds-Karp (BFS-based) for large graphs.
-int fordFulkersonAndEdmondsKarpHybrid(const vector<vector<int>> &capacity, int s, int t) {
-    int n = capacity.size();
-    if(n < SMALL_GRAPH_THRESHOLD)
-        return fordFulkerson(capacity, s, t);
-    else
-        return edmondsKarp(capacity, s, t);
-}
-
-// A simple main() to test the hybrid algorithm.
-int main() {
-    // Example: a small graph with 6 vertices.
-    // The graph is represented as an adjacency matrix of capacities.
-    // Vertices: 0 = source, 5 = sink.
-    vector<vector<int>> capacity = {
-        {0, 16, 13, 0, 0, 0},
-        {0, 0, 10, 12, 0, 0},
-        {0, 4, 0, 0, 14, 0},
-        {0, 0, 9, 0, 0, 20},
-        {0, 0, 0, 7, 0, 4},
-        {0, 0, 0, 0, 0, 0}
+class Dinic {
+    struct Edge {
+        int v, flow, cap, rev;
     };
+    int V;
+    vector<vector<Edge>> adj;
+    vector<int> level, ptr;
+    atomic<int> flow_atomic;  // Use atomic instead of mutex
 
-    int source = 0;
-    int sink = 5;
+public:
+    Dinic(int V) : V(V), adj(V), level(V), ptr(V) {}
 
-    int maxFlow = fordFulkersonAndEdmondsKarpHybrid(capacity, source, sink);
-    cout << "The maximum possible flow is " << maxFlow << endl;
+    void addEdge(int u, int v, int cap) {
+        adj[u].push_back({v, 0, cap, (int)adj[v].size()});
+        adj[v].push_back({u, 0, 0, (int)adj[u].size() - 1});
+    }
+
+    // 🔥 Optimized Parallel BFS (No Mutex)
+    bool bfs(int s, int t) {
+        fill(level.begin(), level.end(), -1);
+        vector<int> q;
+        q.push_back(s);
+        level[s] = 0;
+
+        size_t index = 0;
+        while (index < q.size()) {
+            int u = q[index++];
+            vector<thread> threads;
+            
+            for (int i = 0; i < adj[u].size(); i++) {
+                threads.emplace_back([&, i]() {
+                    auto &e = adj[u][i];
+                    if (level[e.v] == -1 && e.flow < e.cap) {
+                        level[e.v] = level[u] + 1;
+                        q.push_back(e.v);
+                    }
+                });
+            }
+            
+            for (auto &t : threads) t.join();
+        }
+        return level[t] != -1;
+    }
+
+    // 🔥 Optimized Parallel DFS
+    int dfs(int u, int t, int flow) {
+        if (u == t) return flow;
+
+        for (; ptr[u] < adj[u].size(); ptr[u]++) {
+            auto &e = adj[u][ptr[u]];
+            if (level[e.v] == level[u] + 1 && e.flow < e.cap) {
+                int pushed = dfs(e.v, t, min(flow, e.cap - e.flow));
+                if (pushed > 0) {
+                    e.flow += pushed;
+                    adj[e.v][e.rev].flow -= pushed;
+                    return pushed;
+                }
+            }
+        }
+        return 0;
+    }
+
+    // 🔥 Parallel Max Flow Computation
+    int maxFlow(int s, int t) {
+        int flow = 0;
+        while (bfs(s, t)) {
+            fill(ptr.begin(), ptr.end(), 0);
+
+            vector<thread> threads;
+            atomic<int> local_flows(0);
+
+            for (int i = 0; i < thread::hardware_concurrency(); i++) {
+                threads.emplace_back([&]() {
+                    int local_flow;
+                    do {
+                        local_flow = dfs(s, t, INF);
+                        local_flows.fetch_add(local_flow, memory_order_relaxed);
+                    } while (local_flow > 0);
+                });
+            }
+
+            for (auto &t : threads) t.join();
+            flow += local_flows.load();
+        }
+        return flow;
+    }
+};
+
+int main() {
+    int V = 1001;  // 1001 nodes
+    cout << "Number of nodes: " << V << endl;
+    int S = V, T = V + 1;
+    V += 2;
+    Dinic dinic(V);
+
+    // 🔥 Generate a test graph
+    for (int i = 0; i < V - 3; i++) {
+        dinic.addEdge(i, i + 1, rand() % 50 + 1);
+        if (i + 2 < V - 2) dinic.addEdge(i, i + 2, rand() % 50 + 1);
+    }
+
+    // 🔥 Connect super source and sink
+    dinic.addEdge(S, 0, INF);
+    dinic.addEdge(V - 3, T, INF);
+
+    cout << "Max Flow (Optimized Parallel Dinic): " << dinic.maxFlow(S, T) << endl;
     return 0;
 }

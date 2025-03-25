@@ -1,74 +1,145 @@
-
-#include <iostream>
-#include <vector>
-#include <queue>
-#include <algorithm>
-#include <limits>
-#include <iostream>
-#include <queue>
-#include <climits>
-#include <cstring>
-
+#include <bits/stdc++.h>
+#include <thread>
+#include <mutex>
 using namespace std;
-const int INF = numeric_limits<int>::max();
-#define V 6 
 
-int widestPath(int s, int t, const vector<vector<int>> &res, vector<int>& parent) {
-    int n = res.size();
-    vector<int> bottleneck(n, 0);
+#define INF INT_MAX
+#define NUM_THREADS 4  // Adjust based on CPU cores
 
-    priority_queue<pair<int,int>> pq;
-    bottleneck[s] = INF;
-    parent.assign(n, -1);
-    pq.push({bottleneck[s], s});
+class Dinic {
+    struct Edge {
+        int v, flow, cap, rev;
+    };
+    int V;
+    vector<vector<Edge>> adj;
+    vector<int> level, ptr;
+    mutex flow_mutex;  // Thread-safe flow updates
 
-    while(!pq.empty()){
-        int curFlow = pq.top().first;
-        int u = pq.top().second;
-        pq.pop();
+public:
+    Dinic(int V) : V(V), adj(V), level(V), ptr(V) {}
 
-        if(u == t)
-            return bottleneck[t];
+    void addEdge(int u, int v, int cap) {
+        adj[u].push_back({v, 0, cap, (int)adj[v].size()});
+        adj[v].push_back({u, 0, 0, (int)adj[u].size() - 1});
+    }
 
-        for (int v = 0; v < n; v++){
-            if (res[u][v] > 0) {
-                int newFlow = min(curFlow, res[u][v]);
-                if(newFlow > bottleneck[v]) {
-                    bottleneck[v] = newFlow;
-                    parent[v] = u;
-                    pq.push({bottleneck[v], v});
-                }
+    // 🔥 Parallel BFS (Same as Before)
+    bool bfs(int s, int t) {
+        fill(level.begin(), level.end(), -1);
+        queue<int> q;
+        q.push(s);
+        level[s] = 0;
+
+        while (!q.empty()) {
+            int qsize = q.size();
+            vector<thread> threads;
+            vector<queue<int>> thread_queues(NUM_THREADS);
+
+            for (int i = 0; i < qsize; i++) {
+                int u = q.front();
+                q.pop();
+                thread_queues[i % NUM_THREADS].push(u);
+            }
+
+            for (int i = 0; i < NUM_THREADS; i++) {
+                threads.emplace_back([&, i]() {
+                    while (!thread_queues[i].empty()) {
+                        int u = thread_queues[i].front();
+                        thread_queues[i].pop();
+
+                        for (auto &e : adj[u]) {
+                            if (level[e.v] == -1 && e.flow < e.cap) {
+                                lock_guard<mutex> lock(flow_mutex);
+                                level[e.v] = level[u] + 1;
+                                q.push(e.v);
+                            }
+                        }
+                    }
+                });
+            }
+
+            for (auto &t : threads) t.join();
+        }
+        return level[t] != -1;
+    }
+
+    // 🔥 Parallel DFS using `std::thread`
+    int dfs(int u, int t, int flow) {
+        if (u == t) return flow;
+
+        vector<thread> threads;
+        vector<int> thread_results(NUM_THREADS, 0);
+
+        for (; ptr[u] < adj[u].size(); ptr[u]++) {
+            auto &e = adj[u][ptr[u]];
+            if (level[e.v] == level[u] + 1 && e.flow < e.cap) {
+                int thread_id = ptr[u] % NUM_THREADS;
+                threads.emplace_back([&, thread_id]() {
+                    int pushed = dfs(e.v, t, min(flow, e.cap - e.flow));
+
+                    if (pushed > 0) {
+                        lock_guard<mutex> lock(flow_mutex);  // Prevent race conditions
+                        e.flow += pushed;
+                        adj[e.v][e.rev].flow -= pushed;
+                        thread_results[thread_id] += pushed;
+                    }
+                });
             }
         }
+
+        for (auto &t : threads) t.join();
+
+        int total_flow = 0;
+        for (int f : thread_results) total_flow += f;
+        return total_flow;
     }
-    return bottleneck[t];
-}
 
-int someAlgotithm(const vector<vector<int>> &capacity, int s, int t) {
-    int n = capacity.size();
-    int maxFlow = 0;
-    vector<vector<int>> res = capacity;
-    vector<int> parent(n);
+    // 🔥 Parallel Max Flow Computation
+    int maxFlow(int s, int t) {
+        int flow = 0;
+        while (bfs(s, t)) {
+            fill(ptr.begin(), ptr.end(), 0);
 
+            vector<thread> threads;
+            vector<int> local_flows(NUM_THREADS, 0);
 
+            for (int i = 0; i < NUM_THREADS; i++) {
+                threads.emplace_back([&, i]() {
+                    int local_flow;
+                    do {
+                        local_flow = dfs(s, t, INF);
+                        local_flows[i] += local_flow;
+                    } while (local_flow > 0);
+                });
+            }
 
+            for (auto &t : threads) t.join();
 
-}
+            for (int f : local_flows) {
+                flow += f;
+            }
+        }
+        return flow;
+    }
+};
 
 int main() {
-    vector<vector<int>> capacity = {
-        {0, 16, 13, 0, 0, 0},
-        {0, 0, 10, 12, 0, 0},
-        {0, 4, 0, 0, 14, 0},
-        {0, 0, 9, 0, 0, 20},
-        {0, 0, 0, 7, 0, 4},
-        {0, 0, 0, 0, 0, 0}
-    };
+    int V = 1e3 + 1;  // 100,001 nodes
+    cout << "Number of nodes: " << V << endl;
+    int S = V, T = V + 1;
+    V += 2;
+    Dinic dinic(V);
 
-    int source = 0;
-    int sink = 5;
+    // 🔥 Generate a large graph with random capacities
+    for (int i = 0; i < V - 3; i++) {
+        dinic.addEdge(i, i + 1, rand() % 50 + 1);
+        if (i + 2 < V - 2) dinic.addEdge(i, i + 2, rand() % 50 + 1);
+    }
 
-    int maxFlow = someAlgotithm(capacity, source, sink);
-    cout << "The maximum possible flow is " << maxFlow << endl;
+    // 🔥 Connect super source and sink
+    dinic.addEdge(S, 0, INF);
+    dinic.addEdge(V - 3, T, INF);
+
+    cout << "Max Flow (Parallel Dinic with C++ Threads): " << dinic.maxFlow(S, T) << endl;
     return 0;
 }
