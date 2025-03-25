@@ -73,14 +73,16 @@ bool parallelBFS(Graph &graph, int s, int t, int num_threads) {
 }
 
 int main() {
-    int V = 6;
+    int V = 1e6 + 1;  // 🔥 Large graph with 1M nodes
     Graph graph(V);
 
-    graph.addEdge(0, 1, 10);
-    graph.addEdge(1, 2, 5);
-    graph.addEdge(2, 3, 15);
-    graph.addEdge(3, 4, 10);
-    graph.addEdge(4, 5, 10);
+    cout << "Number of nodes: " << V << endl;
+
+    // 🔥 Create a large random graph
+    for (int i = 0; i < V - 1; i++) {
+        graph.addEdge(i, i + 1, rand() % 50 + 1);
+        if (i + 2 < V) graph.addEdge(i, i + 2, rand() % 50 + 1);
+    }
 
     int num_threads = thread::hardware_concurrency(); // Get max available cores
     cout << "Using " << num_threads << " threads for BFS." << endl;
