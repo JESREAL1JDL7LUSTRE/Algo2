@@ -128,7 +128,7 @@ int main() {
     srand(time(0));
     
     // Set V to 10,000 nodes (for example).
-    int V = 100000;
+    int V = 10000;
     Dinic dinic(V);
     cout << "Number of nodes: " << V << endl;
 
