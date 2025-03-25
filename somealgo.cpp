@@ -65,12 +65,15 @@ public:
 };
 
 int main() {
-    int V = 1e5 + 1;
+    int V = 10001;
     Dinic dinic(V);
-    
+    cout << "Number of nodes: " << V << endl;
+
     for (int i = 0; i < V - 1; i++) {
-        dinic.addEdge(i, i + 1, rand() % 50 + 1);
-        if (i + 2 < V) dinic.addEdge(i, i + 2, rand() % 50 + 1);
+        dinic.addEdge(i, i + 1, rand() % 41 + 10);
+        if (i + 2 < V)
+            dinic.addEdge(i, i + 2, rand() % 41 + 10);
+        
     }
     
     cout << "Max Flow (Dinic's Algorithm): " << dinic.maxFlow(0, V - 1) << endl;

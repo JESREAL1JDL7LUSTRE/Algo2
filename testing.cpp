@@ -20,7 +20,6 @@ public:
         adj[v].push_back({u, 0, 0, (int)adj[u].size() - 1});
     }
 
-    // 🔥 Parallel BFS using OpenMP
     bool bfs(int s, int t) {
         fill(level.begin(), level.end(), -1);
         queue<int> q;
@@ -30,43 +29,24 @@ public:
         while (!q.empty()) {
             int u = q.front();
             q.pop();
-
-            // Parallelize edge traversal
-            #pragma omp parallel for schedule(dynamic)
-            for (int i = 0; i < adj[u].size(); i++) {
-                auto &e = adj[u][i];
+            for (auto &e : adj[u]) {
                 if (level[e.v] == -1 && e.flow < e.cap) {
-                    int expected = -1;
-                    if (__sync_bool_compare_and_swap(&level[e.v], expected, level[u] + 1)) {
-                        #pragma omp critical
-                        q.push(e.v);
-                    }
+                    level[e.v] = level[u] + 1;
+                    q.push(e.v);
                 }
             }
         }
         return level[t] != -1;
     }
 
-    // 🔥 Parallel DFS using OpenMP
     int dfs(int u, int t, int flow) {
         if (u == t) return flow;
-        
-        for (; ptr[u] < adj[u].size(); ptr[u]++) {
-            auto &e = adj[u][ptr[u]];
+        for (int &i = ptr[u]; i < adj[u].size(); i++) {
+            auto &e = adj[u][i];
             if (level[e.v] == level[u] + 1 && e.flow < e.cap) {
-                int pushed = 0;
-                
-                // Parallel DFS calls
-                #pragma omp task shared(pushed)
-                {
-                    pushed = dfs(e.v, t, min(flow, e.cap - e.flow));
-                }
-
-                #pragma omp taskwait // Ensure all DFS tasks complete
+                int pushed = dfs(e.v, t, min(flow, e.cap - e.flow));
                 if (pushed > 0) {
-                    #pragma omp atomic
                     e.flow += pushed;
-                    #pragma omp atomic
                     adj[e.v][e.rev].flow -= pushed;
                     return pushed;
                 }
@@ -75,28 +55,31 @@ public:
         return 0;
     }
 
-    // 🔥 Parallel Max Flow using DFS tasks
     int maxFlow(int s, int t) {
         int flow = 0;
         while (bfs(s, t)) {
             fill(ptr.begin(), ptr.end(), 0);
-            
-            #pragma omp parallel
-            {
-                int local_flow;
-                do {
-                    #pragma omp single nowait
-                    local_flow = dfs(s, t, INF);
-                    
-                    #pragma omp atomic
-                    flow += local_flow;
-                } while (local_flow > 0);
+            int pushed;
+            while ((pushed = dfs(s, t, INF)) > 0) {
+                flow += pushed;
             }
         }
         return flow;
     }
 };
 
+// Partition the graph into `P` partitions
+void partitionGraph(vector<vector<int>> &partitions, int V, int P) {
+    int chunk_size = V / P;
+    for (int i = 0; i < P; i++) {
+        int start = i * chunk_size;
+        int end = (i == P - 1) ? V : start + chunk_size;
+
+        for (int j = start; j < end; j++) {
+            partitions[i].push_back(j);
+        }
+    }
+}
 
 int main() {
     int V = 1e5 + 1;
@@ -107,11 +90,23 @@ int main() {
     V += 2; // Update total nodes
     Dinic dinic(V);
 
+    // Partition graph
+    vector<vector<int>> partitions(PARTITIONS);
+    partitionGraph(partitions, V - 2, PARTITIONS);
+
     // Parallel edge addition
     #pragma omp parallel for
     for (int i = 0; i < V - 3; i++) {
         dinic.addEdge(i, i + 1, rand() % 50 + 1);
         if (i + 2 < V - 2) dinic.addEdge(i, i + 2, rand() % 50 + 1);
+    }
+
+    // Connect super source and sinks to partitions
+    for (int i = 0; i < PARTITIONS; i++) {
+        int start = partitions[i].front();
+        int end = partitions[i].back();
+        dinic.addEdge(S, start, INF); // Super Source → Partition Sources
+        dinic.addEdge(end, T, INF);   // Partition Sinks → Super Sink
     }
 
     cout << "Max Flow (Partitioned Dinic's Algorithm): " << dinic.maxFlow(S, T) << endl;
