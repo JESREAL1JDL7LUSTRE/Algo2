@@ -128,7 +128,7 @@ int main() {
     srand(time(0));
     
     // Set V to 10,000 nodes (for example).
-    int V = 100000;
+    int V = 10000;
     Dinic dinic(V);
     cout << "Number of nodes: " << V << endl;
 
@@ -142,7 +142,7 @@ int main() {
 
     cout << "Using " << NUM_THREADS << " threads for BFS." << endl;
     int max_flow = dinic.maxFlow(0, V - 1);
-    cout << "Max Flow (Parallel Dinic with BFS from Paper): " << max_flow << endl;
+    cout << "Max Flow (Parallel BFS from Paper everything else is normal): " << max_flow << endl;
 
     return 0;
 }

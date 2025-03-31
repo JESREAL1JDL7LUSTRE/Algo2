@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <climits>
 #include <functional>
+#include <stack>
 
 using namespace std;
 
@@ -99,55 +100,87 @@ public:
         return level[t] != -1;
     }
 
-    // ---------------- Experimental Parallel DFS ----------------
-    // Each thread runs its own DFS recursively with a thread-local pointer array.
-    // An atomic flag is used to indicate when an augmenting path is found.
+    // ---------------- Experimental Parallel DFS (Iterative) ----------------
+    // Each thread performs an iterative DFS using its own local state (including a pointer array).
+    // When a thread finds an augmenting path, it records the bottleneck flow and (under a lock)
+    // updates the flows along that path.
     int parallelDFS(int s, int t, int flow) {
         atomic<int> resultFlow(0);
         atomic<bool> found(false);
 
-        // The DFS lambda, working with a local pointer array.
-        function<bool(int, int, vector<int>&)> dfs_local = [&](int u, int current_flow, vector<int> &local_ptr) -> bool {
-            if (found.load()) return false; // Stop if another thread found a path.
-            if (u == t) {
-                // Found an augmenting path.
-                lock_guard<mutex> lock(update_mutex);
-                if (!found.load()) {
-                    found.store(true);
-                    resultFlow.store(current_flow);
-                }
-                return true;
-            }
-            // Explore all edges from u.
-            for (; local_ptr[u] < (int)adj[u].size(); local_ptr[u]++) {
-                auto &e = adj[u][local_ptr[u]];
-                if (level[e.v] == level[u] + 1 && e.flow < e.cap) {
-                    int new_flow = min(current_flow, e.cap - e.flow);
-                    if (dfs_local(e.v, new_flow, local_ptr)) {
-                        // Update flows under lock to avoid races.
-                        lock_guard<mutex> lock(update_mutex);
-                        e.flow += resultFlow.load();
-                        adj[e.v][e.rev].flow -= resultFlow.load();
-                        return true;
-                    }
-                }
-            }
-            return false;
-        };
-
         vector<thread> threads;
-        // Launch threads, each with its own copy of the DFS pointer array.
         for (int i = 0; i < NUM_THREADS; i++) {
             threads.emplace_back([&]() {
+                // Local pointer array to remember the next edge to try for each node.
                 vector<int> local_ptr(V, 0);
-                dfs_local(s, flow, local_ptr);
+                // Stacks to simulate recursion:
+                // 'path' stores the sequence of nodes in the current DFS path.
+                // 'edge_index' stores the chosen edge index from the parent that led to the current node.
+                // 'path_flow' stores the bottleneck flow along the current path.
+                vector<int> path;
+                vector<int> edge_index;
+                vector<int> path_flow;
+
+                // Initialize DFS with source node.
+                path.push_back(s);
+                edge_index.push_back(-1); // no edge led to s
+                path_flow.push_back(flow);
+
+                while (!path.empty() && !found.load()) {
+                    int u = path.back();
+                    if (u == t) {
+                        // Found an augmenting path.
+                        int pushed = path_flow.back();
+                        {
+                            lock_guard<mutex> lock(update_mutex);
+                            // Walk the path and update flows.
+                            int cur = s;
+                            for (size_t j = 1; j < path.size(); j++) {
+                                int v = path[j];
+                                int idx = edge_index[j];
+                                adj[cur][idx].flow += pushed;
+                                adj[v][adj[cur][idx].rev].flow -= pushed;
+                                cur = v;
+                            }
+                        }
+                        found.store(true);
+                        resultFlow.store(pushed);
+                        break;
+                    }
+
+                    // Try to advance from u.
+                    if (local_ptr[u] < (int)adj[u].size()) {
+                        auto &e = adj[u][local_ptr[u]];
+                        // Check if edge is eligible.
+                        if (level[e.v] == level[u] + 1 && e.flow < e.cap) {
+                            // Advance along this edge.
+                            int new_flow = min(path_flow.back(), e.cap - e.flow);
+                            path.push_back(e.v);
+                            edge_index.push_back(local_ptr[u]); // record chosen edge
+                            path_flow.push_back(new_flow);
+                            // Increment pointer for node u (so that next time we try a different edge).
+                            local_ptr[u]++;
+                            continue;
+                        } else {
+                            local_ptr[u]++;
+                            continue;
+                        }
+                    } else {
+                        // No more edges from u; backtrack.
+                        path.pop_back();
+                        if (!edge_index.empty()) edge_index.pop_back();
+                        if (!path_flow.empty()) path_flow.pop_back();
+                    }
+                }
             });
         }
+    
         for (auto &th : threads)
             th.join();
+    
         return resultFlow.load();
     }
-
+    
     // ---------------- Max Flow Computation ----------------
     // Uses the parallel BFS and experimental parallel DFS.
     int maxFlow(int s, int t) {
@@ -166,20 +199,20 @@ int main() {
     srand(time(0));
     
     // Example: Build a graph with 10,000 nodes.
-    int V = 100000;
+    int V = 10000;
     Dinic dinic(V);
     cout << "Number of nodes: " << V << endl;
 
     // Build a sample graph with random capacities.
     for (int i = 0; i < V - 1; i++) {
-        dinic.addEdge(i, i + 1, rand() % 41 + 10);
+        dinic.addEdge(i, i + 1, rand() % 50 + 20);
         if (i + 2 < V)
-            dinic.addEdge(i, i + 2, rand() % 41 + 10);
+            dinic.addEdge(i, i + 2, rand() % 50 + 20);
     }
 
     cout << "Using " << NUM_THREADS << " threads for parallel BFS and experimental parallel DFS." << endl;
     int max_flow = dinic.maxFlow(0, V - 1);
-    cout << "Max Flow (Parallel Dinic with Parallel DFS): " << max_flow << endl;
+    cout << "Max Flow (Parallel BFS from Paper with Parallel and iterative DFS): " << max_flow << endl;
 
     return 0;
 }
