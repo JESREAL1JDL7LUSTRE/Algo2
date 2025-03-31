@@ -73,7 +73,7 @@ bool parallelBFS(Graph &graph, int s, int t, int num_threads) {
 }
 
 int main() {
-    int V = 1e6 + 1;  // 🔥 Large graph with 1M nodes
+    int V = 100000;  // 🔥 Large graph with 1M nodes
     Graph graph(V);
 
     cout << "Number of nodes: " << V << endl;

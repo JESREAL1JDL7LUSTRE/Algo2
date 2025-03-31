@@ -65,14 +65,14 @@ public:
 };
 
 int main() {
-    int V = 10001;
+    int V = 100000;
     Dinic dinic(V);
     cout << "Number of nodes: " << V << endl;
 
     for (int i = 0; i < V - 1; i++) {
-        dinic.addEdge(i, i + 1, rand() % 41 + 10);
+        dinic.addEdge(i, i + 1, rand() % 50 + 20);
         if (i + 2 < V)
-            dinic.addEdge(i, i + 2, rand() % 41 + 10);
+            dinic.addEdge(i, i + 2, rand() % 50 + 20);
         
     }
     

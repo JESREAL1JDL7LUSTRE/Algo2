@@ -99,7 +99,7 @@ public:
 };
 
 int main() {
-    int V = 1e5 + 1;
+    int V = 100000;
     cout << "Number of nodes: " << V << endl;
     int S = V, T = V + 1;
     V += 2;
@@ -107,8 +107,8 @@ int main() {
 
     // 🔥 Add edges to actually create a flow network
     for (int i = 0; i < V - 3; i++) {
-        dinic.addEdge(i, i + 1, rand() % 50 + 1);  // Random capacity
-        if (i + 2 < V - 2) dinic.addEdge(i, i + 2, rand() % 50 + 1);
+        dinic.addEdge(i, i + 1, rand() % 50 + 20);  // Random capacity
+        if (i + 2 < V - 2) dinic.addEdge(i, i + 2, rand() % 50 + 20);
     }
 
     // 🔥 Connect super source and sink

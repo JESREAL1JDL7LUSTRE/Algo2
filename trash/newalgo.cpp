@@ -94,7 +94,7 @@ public:
 };
 
 int main() {
-    int V = 1001;  // 1001 nodes
+    int V = 10000;  // 1001 nodes
     cout << "Number of nodes: " << V << endl;
     int S = V, T = V + 1;
     V += 2;
@@ -102,8 +102,8 @@ int main() {
 
     // 🔥 Generate a test graph
     for (int i = 0; i < V - 3; i++) {
-        dinic.addEdge(i, i + 1, rand() % 50 + 1);
-        if (i + 2 < V - 2) dinic.addEdge(i, i + 2, rand() % 50 + 1);
+        dinic.addEdge(i, i + 1, rand() % 50 + 20);
+        if (i + 2 < V - 2) dinic.addEdge(i, i + 2, rand() % 50 + 20);
     }
 
     // 🔥 Connect super source and sink

@@ -166,7 +166,7 @@ int main() {
     srand(time(0));
     
     // Example: Build a graph with 10,000 nodes.
-    int V = 10000;
+    int V = 100000;
     Dinic dinic(V);
     cout << "Number of nodes: " << V << endl;
 
