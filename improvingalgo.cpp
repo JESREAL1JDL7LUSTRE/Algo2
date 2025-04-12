@@ -1,6 +1,3 @@
-
-// 'in development'
-
 #include <iostream>
 #include <vector>
 #include <queue>
@@ -14,35 +11,21 @@
 #include <climits>
 #include <functional>
 #include <stack>
+#include "ownAlgo.h"
 
 using namespace std;
 
-#define INF INT_MAX
-#define NUM_THREADS static_cast<int>(thread::hardware_concurrency())
-
-class Dinic {
-    struct Edge {
-        int v, flow, cap, rev;
-    };
-    int V;
-    vector<vector<Edge>> adj;
-    vector<int> level;
-    // The shared ptr array is used in sequential DFS; in parallel DFS we create thread-local copies.
-    mutex level_mutex;  // Protects level updates in BFS
-    mutex update_mutex; // Protects flow updates in DFS
-
-public:
-    Dinic(int V) : V(V), adj(V), level(V, -1) {}
+    Dinic::Dinic(int V) : V(V), adj(V), level(V, -1) {}
 
     // Add an edge from u to v with capacity cap, and a reverse edge with 0 capacity.
-    void addEdge(int u, int v, int cap) {
+    void Dinic::addEdge(int u, int v, int cap) {
         adj[u].push_back({v, 0, cap, (int)adj[v].size()});
         adj[v].push_back({u, 0, 0, (int)adj[u].size() - 1});
     }
 
     // ---------------- Parallel BFS Worker ----------------
     // Processes a chunk of the frontier and writes discovered nodes into its local buffer.
-    void bfs_worker(const vector<int>& frontier, int start, int end,
+    void Dinic::bfs_worker(const vector<int>& frontier, int start, int end,
                     vector<vector<int>>& local_frontiers, int thread_id) {
         for (int i = start; i < end; i++) {
             int u = frontier[i];
@@ -58,7 +41,7 @@ public:
     }
 
     // ---------------- Parallel BFS ----------------
-    bool parallelBFS(int s, int t) {
+    bool Dinic::parallelBFS(int s, int t) {
         fill(level.begin(), level.end(), -1);
         vector<int> frontier;
         frontier.push_back(s);
@@ -104,7 +87,7 @@ public:
     // Each thread performs an iterative DFS using its own local state (including a pointer array).
     // When a thread finds an augmenting path, it records the bottleneck flow and (under a lock)
     // updates the flows along that path.
-    int parallelDFS(int s, int t, int flow) {
+    int Dinic::parallelDFS(int s, int t, int flow) {
         atomic<int> resultFlow(0);
         atomic<bool> found(false);
 
@@ -183,7 +166,7 @@ public:
     
     // ---------------- Max Flow Computation ----------------
     // Uses the parallel BFS and experimental parallel DFS.
-    int maxFlow(int s, int t) {
+    int Dinic::maxFlow(int s, int t) {
         int flow = 0;
         while (parallelBFS(s, t)) {
             // Instead of a single shared pointer array, parallelDFS creates its own per-thread copies.
@@ -192,27 +175,26 @@ public:
         }
         return flow;
     }
-};
 
-int main() {
-    // Seed random number generator.
-    srand(time(0));
+// int main() {
+//     // Seed random number generator.
+//     srand(time(0));
     
-    // Example: Build a graph with 10,000 nodes.
-    int V = 10000;
-    Dinic dinic(V);
-    cout << "Number of nodes: " << V << endl;
+//     // Example: Build a graph with 10,000 nodes.
+//     int V = 10000;
+//     Dinic dinic(V);
+//     cout << "Number of nodes: " << V << endl;
 
-    // Build a sample graph with random capacities.
-    for (int i = 0; i < V - 1; i++) {
-        dinic.addEdge(i, i + 1, rand() % 50 + 20);
-        if (i + 2 < V)
-            dinic.addEdge(i, i + 2, rand() % 50 + 20);
-    }
+//     // Build a sample graph with random capacities.
+//     for (int i = 0; i < V - 1; i++) {
+//         dinic.addEdge(i, i + 1, rand() % 50 + 20);
+//         if (i + 2 < V)
+//             dinic.addEdge(i, i + 2, rand() % 50 + 20);
+//     }
 
-    cout << "Using " << NUM_THREADS << " threads for parallel BFS and experimental parallel DFS." << endl;
-    int max_flow = dinic.maxFlow(0, V - 1);
-    cout << "Max Flow (Parallel BFS from Paper with Parallel and iterative DFS): " << max_flow << endl;
+//     cout << "Using " << NUM_THREADS << " threads for parallel BFS and experimental parallel DFS." << endl;
+//     int max_flow = dinic.maxFlow(0, V - 1);
+//     cout << "Max Flow (Parallel BFS from Paper with Parallel and iterative DFS): " << max_flow << endl;
 
-    return 0;
-}
+//     return 0;
+// }

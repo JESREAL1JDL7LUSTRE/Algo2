@@ -1,0 +1,8 @@
+OWN
+
+g++ improvingalgo.cpp graphloader.cpp own_benchmark.cpp -o main.exe -std=c++17 -pthread -I"D:\SCHOOL\vcpkg\installed\x64-windows\include"
+.\main.exe
+
+HARERNAS
+g++ algofrompapernotimproved.cpp graphloader.cpp harernas_benchmark.cpp -o main2.exe -std=c++17 -pthread -I"D:\SCHOOL\vcpkg\installed\x64-windows\include"
+.\main.exe
