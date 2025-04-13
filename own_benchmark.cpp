@@ -1,6 +1,8 @@
 #include "graphloader.h"
 #include "ownAlgo.h"
 #include <iostream>
+#include <chrono>
+using namespace std::chrono;
 
 int main() {
     Graph graph;
@@ -24,10 +26,14 @@ int main() {
             dinic.addEdge(u, edge.to, edge.capacity);
         }
     }
-
+    auto start = high_resolution_clock::now();
     int maxFlow = dinic.maxFlow(0, graph.size() - 1);
     std::cout << "Max Flow using OWN algo: " << maxFlow << std::endl;
-
+    
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<microseconds>(stop - start);
+    std::cout << "Time taken: " << duration.count() << " microseconds" << std::endl;
+    
     return 0;
 }
 
