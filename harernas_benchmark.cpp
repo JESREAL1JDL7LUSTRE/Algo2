@@ -2,7 +2,7 @@
 #include "harernasAlgo.h"
 #include <iostream>
 #include <chrono>
-using namespace std;
+#include "memory_counter.h"
 using namespace std::chrono;
 
 int main() {
@@ -29,11 +29,15 @@ int main() {
     }
 
     auto start = high_resolution_clock::now();
+    printMemoryUsage();
     int maxFlow = dinic.maxFlow(0, graph.size() - 1);
+    printMemoryUsage();
     std::cout << "Max Flow using Harernas Algo: " << maxFlow << std::endl;
+    
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<microseconds>(stop - start);
     std::cout << "Time taken: " << duration.count() << " microseconds" << std::endl;
+    
     return 0;
 }
 

@@ -2,6 +2,7 @@
 #include "ownAlgo.h"
 #include <iostream>
 #include <chrono>
+#include "memory_counter.h"
 using namespace std::chrono;
 
 int main() {
@@ -27,9 +28,11 @@ int main() {
         }
     }
     auto start = high_resolution_clock::now();
+    printMemoryUsage();
     int maxFlow = dinic.maxFlow(0, graph.size() - 1);
+    printMemoryUsage();
     std::cout << "Max Flow using OWN algo: " << maxFlow << std::endl;
-    
+
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<microseconds>(stop - start);
     std::cout << "Time taken: " << duration.count() << " microseconds" << std::endl;
