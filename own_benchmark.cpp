@@ -9,7 +9,7 @@ int main() {
     Graph graph;
 
     // Load graph from JSON file first
-    if (!load_graph_from_json("graph.json", graph)) {
+    if (!load_graph_from_json("graph700k1.2M.json", graph)) {
         std::cerr << "Failed to load graph from JSON." << std::endl;
         return 1;
     }
@@ -34,8 +34,14 @@ int main() {
     std::cout << "Max Flow using OWN algo: " << maxFlow << std::endl;
 
     auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<microseconds>(stop - start);
-    std::cout << "Time taken: " << duration.count() << " microseconds" << std::endl;
+    auto duration_mic = duration_cast<microseconds>(stop - start);
+    std::cout << "Time taken: " << duration_mic.count() << " microseconds" << std::endl;
+    
+    auto duration_mil = duration_cast<milliseconds>(stop - start);
+    std::cout << "Time taken: " << duration_mil.count() << " milliseconds" << std::endl;
+    
+    auto duration_sec = duration_cast<seconds>(stop - start);
+    std::cout << "Time taken: " << duration_sec.count() << " seconds" << std::endl;
     
     return 0;
 }

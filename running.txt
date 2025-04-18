@@ -1,8 +1,15 @@
 OWN
-
 g++ improvingalgo.cpp graphloader.cpp own_benchmark.cpp -o main.exe -std=c++17 -pthread -I"D:\SCHOOL\vcpkg\installed\x64-windows\include"
 .\main.exe
 
 HARERNAS
 g++ algofrompapernotimproved.cpp graphloader.cpp harernas_benchmark.cpp -o main2.exe -std=c++17 -pthread -I"D:\SCHOOL\vcpkg\installed\x64-windows\include"
-.\main.exe
+.\main2.exe
+
+CAPACITY SCALING
+g++ capacity_scaling.cpp graphloader.cpp capacity_scaling_benchmark.cpp -o main3.exe -std=c++17 -pthread -I"D:\SCHOOL\vcpkg\installed\x64-windows\include"
+.\main3.exe
+
+PUSH-RELABEL
+g++ push_relabel.cpp graphloader.cpp push_relabel_benchmark.cpp -o main4.exe -std=c++17 -pthread -I"D:\SCHOOL\vcpkg\installed\x64-windows\include"
+.\main4.exe

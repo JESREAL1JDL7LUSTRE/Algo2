@@ -23,7 +23,7 @@ def generate_graph(num_nodes, num_edges, max_capacity=100):
         cap = random.randint(30, max_capacity)
         graph["edges"].append({"from": u, "to": v, "capacity": cap})
 
-    with open("graph.json", "w") as f:
+    with open("graph1M1k.json", "w") as f:
         json.dump(graph, f)
 
-generate_graph(num_nodes=100000, num_edges=500000)
+generate_graph(num_nodes=1000000, num_edges=1000)
