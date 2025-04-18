@@ -1,5 +1,5 @@
 #include "graphloader.h"
-#include "push_relabel.h"
+#include "mkm.h"
 #include <iostream>
 #include <chrono>
 #include "memory_counter.h"
@@ -15,7 +15,7 @@ int main() {
 
     std::cout << "Graph loaded with " << graph.size() << " vertices." << std::endl;
 
-    OptimizedPushRelabel algo(graph.size());
+    MKM algo(graph.size());
 
     for (const auto& pair : graph) {
         int u = pair.first;

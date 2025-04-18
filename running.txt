@@ -13,3 +13,7 @@ g++ capacity_scaling.cpp graphloader.cpp capacity_scaling_benchmark.cpp -o main3
 PUSH-RELABEL
 g++ push_relabel.cpp graphloader.cpp push_relabel_benchmark.cpp -o main4.exe -std=c++17 -pthread -I"D:\SCHOOL\vcpkg\installed\x64-windows\include"
 .\main4.exe
+
+MKM
+g++ mkm.cpp graphloader.cpp mkm_benchmark.cpp -o main5.exe -std=c++17 -pthread -I"D:\SCHOOL\vcpkg\installed\x64-windows\include"
+.\main5.exe

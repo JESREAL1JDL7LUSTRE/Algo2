@@ -1,5 +1,5 @@
-#ifndef PUSH_RELABEL_H
-#define PUSH_RELABEL_H
+#ifndef OPTIMIZED_PUSH_RELABEL_H
+#define OPTIMIZED_PUSH_RELABEL_H
 
 #include <vector>
 #include <queue>
@@ -9,7 +9,7 @@
 
 using namespace std;
 
-class PushRelabel {
+class OptimizedPushRelabel {
     struct Edge {
         int to, rev;
         long long cap, flow;
@@ -21,16 +21,17 @@ class PushRelabel {
     vector<int> height, count, active;
     queue<int> Q;
 
-    void push(Edge &e, int u);
+    void push(int u, Edge &e);
     void relabel(int u);
+    void gap(int k);
     void discharge(int u);
+    void global_relabel(int t);
 
 public:
-    explicit PushRelabel(int n);
+    explicit OptimizedPushRelabel(int n);
 
     void addEdge(int u, int v, long long cap);
-
     long long maxFlow(int s, int t);
 };
 
-#endif // PUSH_RELABEL_H
+#endif // OPTIMIZED_PUSH_RELABEL_H
