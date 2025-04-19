@@ -1,37 +1,26 @@
-#ifndef OPTIMIZED_PUSH_RELABEL_H
-#define OPTIMIZED_PUSH_RELABEL_H
+#ifndef GENERIC_PUSH_RELABEL_H
+#define GENERIC_PUSH_RELABEL_H
 
 #include <vector>
-#include <queue>
-#include <algorithm>
-#include <limits>
 #include <climits>
-
 using namespace std;
 
-class OptimizedPushRelabel {
+class GenericPushRelabel {
     struct Edge {
         int to, rev;
         long long cap, flow;
     };
 
     int n;
-    vector<vector<Edge>> graph;
+    vector<vector<Edge>> adj;
     vector<long long> excess;
-    vector<int> height, count, active;
-    queue<int> Q;
-
-    void push(int u, Edge &e);
-    void relabel(int u);
-    void gap(int k);
-    void discharge(int u);
-    void global_relabel(int t);
+    vector<int> height, ptr;
+    vector<bool> active;
 
 public:
-    explicit OptimizedPushRelabel(int n);
-
+    explicit GenericPushRelabel(int n);
     void addEdge(int u, int v, long long cap);
     long long maxFlow(int s, int t);
 };
 
-#endif // OPTIMIZED_PUSH_RELABEL_H
+#endif // GENERIC_PUSH_RELABEL_H

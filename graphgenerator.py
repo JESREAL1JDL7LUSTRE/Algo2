@@ -1,29 +1,43 @@
 import json
 import random
 
-def generate_graph(num_nodes, num_edges, max_capacity=100):
+def generate_graph(num_nodes, num_edges, max_capacity=100, output_file="graph.json"):
     graph = {
         "nodes": list(range(num_nodes)),
         "edges": []
     }
 
-    # Create an edge from node 0 to node num_nodes-1 to guarantee a path
-    graph["edges"].append({
-        "from": 0, 
-        "to": num_nodes - 1, 
-        "capacity": random.randint(30, max_capacity)
-    })
+    edge_set = set()
 
-    # Now create the rest of the graph with random edges
-    for _ in range(num_edges - 1):
+    def add_edge(u, v, cap):
+        # 1) no self‑loops, 2) no parallel in either direction
+        if u == v or (u, v) in edge_set or (v, u) in edge_set:
+            return False
+
+        edge_set.add((u, v))
+        graph["edges"].append({
+            "from": u,
+            "to": v,
+            "capacity": cap
+        })
+        return True
+
+    # 1) Guarantee connectivity along a spine 0→1→…→N-1
+    for i in range(num_nodes - 1):
+        add_edge(i, i + 1, random.randint(30, max_capacity))
+
+    # 2) Fill up remaining edges
+    while len(graph["edges"]) < num_edges:
         u = random.randint(0, num_nodes - 1)
         v = random.randint(0, num_nodes - 1)
-        while u == v:  # avoid self-loops
-            v = random.randint(0, num_nodes - 1)
         cap = random.randint(30, max_capacity)
-        graph["edges"].append({"from": u, "to": v, "capacity": cap})
+        add_edge(u, v, cap)
 
-    with open("graph1M1k.json", "w") as f:
+    with open(output_file, "w") as f:
         json.dump(graph, f)
 
-generate_graph(num_nodes=1000000, num_edges=1000)
+    print(f"Graph with {num_nodes} nodes and {len(graph['edges'])} edges saved to {output_file}")
+
+# Example usage
+generate_graph(num_nodes=700000, num_edges=1500000, max_capacity=100,
+               output_file="testgraph700k1.5M.json")

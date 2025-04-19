@@ -1,124 +1,85 @@
 #include "push_relabel.h"
 #include <queue>
-#include <cstring>
+#include <algorithm>
 
-OptimizedPushRelabel::OptimizedPushRelabel(int n)
-    : n(n), graph(n), excess(n), height(n), count(2 * n), active(n) {}
+GenericPushRelabel::GenericPushRelabel(int n)
+    : n(n),
+      adj(n),
+      excess(n, 0),
+      height(n, 0),
+      ptr(n, 0),
+      active(n, false)
+{}
 
-void OptimizedPushRelabel::addEdge(int u, int v, long long cap) {
-    graph[u].push_back({v, (int)graph[v].size(), cap, 0});
-    graph[v].push_back({u, (int)graph[u].size() - 1, 0, 0});
+void GenericPushRelabel::addEdge(int u, int v, long long cap) {
+    adj[u].push_back({v, (int)adj[v].size(), cap, 0});
+    adj[v].push_back({u, (int)adj[u].size() - 1, 0, 0});
 }
 
-void OptimizedPushRelabel::push(int u, Edge &e) {
-    long long amt = min(excess[u], e.cap - e.flow);
-    if (height[u] == height[e.to] + 1 && amt > 0) {
-        e.flow += amt;
-        graph[e.to][e.rev].flow -= amt;
-        excess[e.to] += amt;
-        excess[u] -= amt;
-        if (!active[e.to] && excess[e.to] > 0) {
-            active[e.to] = 1;
-            Q.push(e.to);
-        }
-    }
-}
+long long GenericPushRelabel::maxFlow(int s, int t) {
+    // Reset state
+    fill(excess.begin(), excess.end(), 0);
+    fill(height.begin(), height.end(), 0);
+    fill(ptr.begin(), ptr.end(), 0);
+    fill(active.begin(), active.end(), false);
 
-void OptimizedPushRelabel::relabel(int u) {
-    int min_height = INT_MAX;
-    for (auto &e : graph[u]) {
-        if (e.cap > e.flow) {
-            min_height = min(min_height, height[e.to]);
-        }
+    // Initial preflow from source
+    height[s] = n;
+    for (auto &e : adj[s]) {
+        e.flow = e.cap;
+        adj[e.to][e.rev].flow = -e.cap;
+        excess[e.to] += e.cap;
+        excess[s] -= e.cap;
     }
-    if (min_height < INT_MAX) {
-        count[height[u]]--;
-        height[u] = min_height + 1;
-        count[height[u]]++;
-    }
-}
 
-void OptimizedPushRelabel::gap(int k) {
-    for (int u = 0; u < n; ++u) {
-        if (height[u] >= k) {
-            count[height[u]]--;
-            height[u] = max(height[u], n + 1);
-            count[height[u]]++;
-        }
-    }
-}
-
-void OptimizedPushRelabel::discharge(int u) {
-    for (auto &e : graph[u]) {
-        if (excess[u] == 0) break;
-        push(u, e);
-    }
-    if (excess[u] > 0) {
-        if (count[height[u]] == 1) {
-            gap(height[u]);
-        } else {
-            relabel(u);
-        }
-    }
-}
-
-void OptimizedPushRelabel::global_relabel(int t) {
-    fill(height.begin(), height.end(), n);
-    fill(count.begin(), count.end(), 0);
-
+    // Enqueue all active vertices except s & t
     queue<int> q;
-    height[t] = 0;
-    q.push(t);
+    for (int i = 0; i < n; i++) {
+        if (i != s && i != t && excess[i] > 0) {
+            q.push(i);
+            active[i] = true;
+        }
+    }
 
+    // Main discharge loop
     while (!q.empty()) {
         int u = q.front(); q.pop();
-        for (auto &e : graph[u]) {
-            if (graph[e.to][e.rev].cap > graph[e.to][e.rev].flow && height[e.to] == n) {
-                height[e.to] = height[u] + 1;
-                q.push(e.to);
+        active[u] = false;
+
+        // Discharge u until its excess is 0
+        while (excess[u] > 0) {
+            if (ptr[u] == (int)adj[u].size()) {
+                // Relabel
+                int min_h = INT_MAX;
+                for (auto &e : adj[u]) {
+                    if (e.cap - e.flow > 0)
+                        min_h = min(min_h, height[e.to]);
+                }
+                height[u] = (min_h < INT_MAX ? min_h + 1 : height[u]);
+                ptr[u] = 0;
+            } else {
+                // Try to push
+                auto &e = adj[u][ptr[u]];
+                if (e.cap - e.flow > 0 && height[u] == height[e.to] + 1) {
+                    long long delta = min(excess[u], e.cap - e.flow);
+                    e.flow += delta;
+                    adj[e.to][e.rev].flow -= delta;
+                    excess[u] -= delta;
+                    excess[e.to] += delta;
+
+                    if (!active[e.to] && e.to != s && e.to != t) {
+                        q.push(e.to);
+                        active[e.to] = true;
+                    }
+                } else {
+                    ptr[u]++;
+                }
             }
         }
-        count[height[u]]++;
-    }
-}
-
-long long OptimizedPushRelabel::maxFlow(int s, int t) {
-    global_relabel(t);
-
-    height[s] = n;
-    count[0] = n - 1;
-    count[n] = 1;
-
-    for (auto &e : graph[s]) {
-        excess[s] -= e.cap;
-        excess[e.to] += e.cap;
-        e.flow = e.cap;
-        graph[e.to][e.rev].flow = -e.cap;
-        if (e.to != s && e.to != t) {
-            active[e.to] = 1;
-            Q.push(e.to);
-        }
     }
 
-    int discharge_counter = 0;
-    const int RELABEL_INTERVAL = n;
-
-    while (!Q.empty()) {
-        int u = Q.front(); Q.pop();
-        active[u] = 0;
-        discharge(u);
-
-        if (++discharge_counter % RELABEL_INTERVAL == 0)
-            global_relabel(t);
-
-        if (excess[u] > 0) {
-            active[u] = 1;
-            Q.push(u);
-        }
-    }
-
+    // Sum flows out of s
     long long flow = 0;
-    for (auto &e : graph[s])
-        flow += e.flow;
+    for (auto &e : adj[s]) flow += e.flow;
     return flow;
 }

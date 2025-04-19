@@ -9,7 +9,7 @@ int main() {
     Graph graph;
 
     // Load graph from JSON file first
-    if (!load_graph_from_json("graph700k1.2M.json", graph)) {
+    if (!load_graph_from_json("graph100_200.json", graph)) {
         std::cerr << "Failed to load graph from JSON." << std::endl;
         return 1;
     }

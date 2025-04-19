@@ -8,14 +8,14 @@ using namespace std::chrono;
 int main() {
     Graph graph;
 
-    if (!load_graph_from_json("graph100k500k.json", graph)) {
+    if (!load_graph_from_json("graph100_200.json", graph)) {
         std::cerr << "Failed to load graph from JSON." << std::endl;
         return 1;
     }
 
     std::cout << "Graph loaded with " << graph.size() << " vertices." << std::endl;
 
-    OptimizedPushRelabel algo(graph.size());
+    GenericPushRelabel  algo(graph.size());
 
     for (const auto& pair : graph) {
         int u = pair.first;
