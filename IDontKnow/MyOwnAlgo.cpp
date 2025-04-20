@@ -5,32 +5,37 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
-#include <cstdlib>
-#include <ctime>
 #include <algorithm>
 #include <climits>
 #include <functional>
 #include <stack>
-#include "ownAlgo.h"
+#include <chrono>
+#include "graphloader.h"
+#include "memory_counter.h"
 
 using namespace std;
+using namespace std::chrono;
 
-    Dinic::Dinic(int V) : V(V), adj(V), level(V, -1) {}
+#define INF INT_MAX
+#define NUM_THREADS static_cast<int>(thread::hardware_concurrency())
 
-    // Add an edge from u to v with capacity cap, and a reverse edge with 0 capacity.
-    void Dinic::addEdge(int u, int v, int cap) {
-        adj[u].push_back({v, 0, cap, (int)adj[v].size()});
-        adj[v].push_back({u, 0, 0, (int)adj[u].size() - 1});
-    }
+class Dinic {
+    struct Edge {
+        int v, flow, cap, rev;
+    };
 
-    // ---------------- Parallel BFS Worker ----------------
-    // Processes a chunk of the frontier and writes discovered nodes into its local buffer.
-    void Dinic::bfs_worker(const vector<int>& frontier, int start, int end,
+    int V;
+    vector<vector<Edge>> adj;
+    vector<int> level;
+    mutex level_mutex;
+    mutex update_mutex;
+
+    // BFS worker for parallel level graph construction
+    void bfs_worker(const vector<int>& frontier, int start, int end,
                     vector<vector<int>>& local_frontiers, int thread_id) {
         for (int i = start; i < end; i++) {
             int u = frontier[i];
             for (auto &e : adj[u]) {
-                // Protect shared level updates.
                 lock_guard<mutex> lock(level_mutex);
                 if (level[e.v] == -1 && e.flow < e.cap) {
                     level[e.v] = level[u] + 1;
@@ -40,54 +45,43 @@ using namespace std;
         }
     }
 
-    // ---------------- Parallel BFS ----------------
-    bool Dinic::parallelBFS(int s, int t) {
+    // Build level graph in parallel
+    bool parallelBFS(int s, int t) {
         fill(level.begin(), level.end(), -1);
-        vector<int> frontier;
-        frontier.push_back(s);
+        vector<int> frontier = {s};
         level[s] = 0;
 
-        // Create local buffers (one per thread).
         vector<vector<int>> local_frontiers(NUM_THREADS);
-        for (int i = 0; i < NUM_THREADS; i++)
-            local_frontiers[i].reserve(V / NUM_THREADS + 10);
-        
+        for (auto &lf : local_frontiers)
+            lf.reserve(V / max(1, NUM_THREADS) + 10);
+
         while (!frontier.empty()) {
             int f_size = frontier.size();
-            // Use fewer threads if the frontier is small.
             int num_threads = min(NUM_THREADS, max(1, f_size / 500));
-            for (auto &lf : local_frontiers)
-                lf.clear();
-            
+            for (auto &lf : local_frontiers) lf.clear();
+
             vector<thread> threads;
-            int chunk_size = (f_size + num_threads - 1) / num_threads;
+            int chunk = (f_size + num_threads - 1) / num_threads;
             for (int i = 0; i < num_threads; i++) {
-                int start = i * chunk_size;
-                int end = min((i + 1) * chunk_size, f_size);
-                if (start < end) {
-                    threads.emplace_back(&Dinic::bfs_worker, this,
-                                         cref(frontier), start, end,
-                                         ref(local_frontiers), i);
-                }
+                int st = i*chunk;
+                int ed = min((i+1)*chunk, f_size);
+                if (st < ed)
+                    threads.emplace_back(&Dinic::bfs_worker, this, cref(frontier),
+                                         st, ed, ref(local_frontiers), i);
             }
-            for (auto &th : threads)
-                th.join();
-            
-            vector<int> next_frontier;
-            next_frontier.reserve(f_size);
+            for (auto &th : threads) th.join();
+
+            vector<int> next;
+            next.reserve(f_size);
             for (auto &lf : local_frontiers)
-                next_frontier.insert(next_frontier.end(), lf.begin(), lf.end());
-            
-            frontier.swap(next_frontier);
+                next.insert(next.end(), lf.begin(), lf.end());
+            frontier.swap(next);
         }
         return level[t] != -1;
     }
 
-    // ---------------- Experimental Parallel DFS (Iterative) ----------------
-    // Each thread performs an iterative DFS using its own local state (including a pointer array).
-    // When a thread finds an augmenting path, it records the bottleneck flow and (under a lock)
-    // updates the flows along that path.
-    int Dinic::parallelDFS(int s, int t, int flow) {
+    // Experimental parallel DFS (iterative) to push one augmenting path
+    int parallelDFS(int s, int t, int flow_cap) {
         atomic<int> resultFlow(0);
         atomic<bool> found(false);
 
@@ -107,7 +101,7 @@ using namespace std;
                 // Initialize DFS with source node.
                 path.push_back(s);
                 edge_index.push_back(-1); // no edge led to s
-                path_flow.push_back(flow);
+                path_flow.push_back(flow_cap);
 
                 while (!path.empty() && !found.load()) {
                     int u = path.back();
@@ -163,15 +157,57 @@ using namespace std;
     
         return resultFlow.load();
     }
-    
-    // ---------------- Max Flow Computation ----------------
-    // Uses the parallel BFS and experimental parallel DFS.
-    int Dinic::maxFlow(int s, int t) {
+
+public:
+    Dinic(int V) : V(V), adj(V), level(V, -1) {}
+
+    void addEdge(int u, int v, int cap) {
+        adj[u].push_back({v, 0, cap, (int)adj[v].size()});
+        adj[v].push_back({u, 0, 0,   (int)adj[u].size() - 1});
+    }
+
+    int maxFlow(int s, int t) {
         int flow = 0;
         while (parallelBFS(s, t)) {
-            // Instead of a single shared pointer array, parallelDFS creates its own per-thread copies.
+            // repeatedly find augmenting paths in parallel
             while (int pushed = parallelDFS(s, t, INF))
                 flow += pushed;
         }
         return flow;
     }
+};
+
+int main() {
+    Graph graph;
+    if (!load_graph_from_json("SG.json", graph)) {
+        cerr << "Failed to load graph from JSON.\n";
+        return 1;
+    }
+    cout << "Graph loaded with " << graph.size() << " vertices.\n";
+
+    Dinic dinic(graph.size());
+    for (auto &p : graph) {
+        int u = p.first;
+        for (auto &e : p.second)
+            dinic.addEdge(u, e.to, e.capacity);
+    }
+
+    auto start = high_resolution_clock::now();
+    printMemoryUsage();
+    int maxFlow = dinic.maxFlow(0, graph.size() - 1);
+    printMemoryUsage();
+    cout << "Max Flow using OWN algo: " << maxFlow << "\n";
+
+    auto stop = high_resolution_clock::now();
+    auto duration_mic = duration_cast<microseconds>(stop - start);
+    cout << "Time taken: " << duration_mic.count() << " microseconds" << endl;
+    
+    auto duration_mil = duration_cast<milliseconds>(stop - start);
+    cout << "Time taken: " << duration_mil.count() << " milliseconds" << endl;
+    
+    auto duration_sec = duration_cast<seconds>(stop - start);
+    cout << "Time taken: " << duration_sec.count() << " seconds" << endl;
+    
+
+    return 0;
+}

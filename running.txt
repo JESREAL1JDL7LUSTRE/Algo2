@@ -13,3 +13,20 @@ g++ capacity_scaling.cpp graphloader.cpp capacity_scaling_benchmark.cpp -o main3
 PUSH-RELABEL
 g++ push_relabel.cpp graphloader.cpp push_relabel_benchmark.cpp -o main4.exe -std=c++17 -pthread -I"D:\SCHOOL\vcpkg\installed\x64-windows\include"
 .\main4.exe
+
+
+OWN
+g++ MyOwnAlgo.cpp graphloader.cpp -o own.exe -std=c++17 -pthread -I"D:\SCHOOL\vcpkg\installed\x64-windows\include"
+.\own.exe
+
+HARERNAS
+g++ HarernasAlgo.cpp graphloader.cpp -o harernas.exe -std=c++17 -pthread -I"D:\SCHOOL\vcpkg\installed\x64-windows\include"
+.\harernas.exe
+
+CAPACITY SCALING
+g++ capacityscaling.cpp graphloader.cpp -o cap.exe -std=c++17 -pthread -I"D:\SCHOOL\vcpkg\installed\x64-windows\include"
+.\cap.exe
+
+PUSH-RELABEL
+g++ pushrelabel.cpp graphloader.cpp -o push.exe -std=c++17 -pthread -I"D:\SCHOOL\vcpkg\installed\x64-windows\include"
+.\push.exe

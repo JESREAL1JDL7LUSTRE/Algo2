@@ -11,8 +11,7 @@
 #include <stack>
 
 #define INF INT_MAX
-// NUM_THREADS static_cast<int>(std::thread::hardware_concurrency())
-#define NUM_THREADS 4 // For testing purposes, set to 2 threads
+#define NUM_THREADS static_cast<int>(thread::hardware_concurrency())
 
 class Dinic {
     struct Edge {

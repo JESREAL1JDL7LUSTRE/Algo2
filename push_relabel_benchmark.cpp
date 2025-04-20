@@ -8,7 +8,7 @@ using namespace std::chrono;
 int main() {
     Graph graph;
 
-    if (!load_graph_from_json("graph100_200.json", graph)) {
+    if (!load_graph_from_json("SG.json", graph)) {
         std::cerr << "Failed to load graph from JSON." << std::endl;
         return 1;
     }
