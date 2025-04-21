@@ -175,3 +175,168 @@ using namespace std;
         }
         return flow;
     }
+
+// int main() {
+//     // Seed random number generator.
+//     srand(time(0));
+    
+//     // Example: Build a graph with 10,000 nodes.
+//     int V = 10000;
+//     Dinic dinic(V);
+//     cout << "Number of nodes: " << V << endl;
+
+//     // Build a sample graph with random capacities.
+//     for (int i = 0; i < V - 1; i++) {
+//         dinic.addEdge(i, i + 1, rand() % 50 + 20);
+//         if (i + 2 < V)
+//             dinic.addEdge(i, i + 2, rand() % 50 + 20);
+//     }
+
+//     cout << "Using " << NUM_THREADS << " threads for parallel BFS and experimental parallel DFS." << endl;
+//     int max_flow = dinic.maxFlow(0, V - 1);
+//     cout << "Max Flow (Parallel BFS from Paper with Parallel and iterative DFS): " << max_flow << endl;
+
+//     return 0;
+// }
+
+// #include <iostream>
+// #include <vector>
+// #include <queue>
+// #include <thread>
+// #include <mutex>
+// #include <algorithm>
+// #include <climits>
+// #include "ownAlgo.h"
+
+// using namespace std;
+
+// // Constructor
+// Dinic::Dinic(int V) : V(V), adj(V), level(V), ptr(V) {}
+
+// // Add edge to the graph
+// void Dinic::addEdge(int u, int v, int cap) {
+//     adj[u].push_back({v, 0, cap, (int)adj[v].size()});
+//     adj[v].push_back({u, 0, 0, (int)adj[u].size() - 1});
+// }
+
+// // ====== PARALLEL BFS ======
+// void Dinic::bfs_worker(const vector<int>& frontier, int start, int end,
+//                        vector<vector<int>>& local_frontiers, int thread_id) {
+//     for (int i = start; i < end; i++) {
+//         int u = frontier[i];
+//         for (auto &e : adj[u]) {
+//             if (e.flow < e.cap) {
+//                 lock_guard<mutex> lock(level_mutex);
+//                 if (level[e.v] == -1) {
+//                     level[e.v] = level[u] + 1;
+//                     local_frontiers[thread_id].push_back(e.v);
+//                 }
+//             }
+//         }
+//     }
+// }
+
+// bool Dinic::parallelBFS(int s, int t) {
+//     fill(level.begin(), level.end(), -1);
+//     level[s] = 0;
+
+//     vector<int> frontier = {s};
+//     vector<vector<int>> local_frontiers(NUM_THREADS);
+//     for (int i = 0; i < NUM_THREADS; i++)
+//         local_frontiers[i].reserve(V / NUM_THREADS + 4);
+
+//     while (!frontier.empty()) {
+//         int f_size = frontier.size();
+//         int num_threads = min(NUM_THREADS, max(1, f_size / 500));
+
+//         for (auto &lf : local_frontiers) lf.clear();
+
+//         vector<thread> threads;
+//         int chunk_size = (f_size + num_threads - 1) / num_threads;
+
+//         for (int i = 0; i < num_threads; ++i) {
+//             int start = i * chunk_size;
+//             int end = min((i + 1) * chunk_size, f_size);
+//             if (start < end) {
+//                 threads.emplace_back(&Dinic::bfs_worker, this,
+//                                      cref(frontier), start, end,
+//                                      ref(local_frontiers), i);
+//             }
+//         }
+
+//         for (auto &th : threads) th.join();
+
+//         vector<int> next_frontier;
+//         for (auto &lf : local_frontiers)
+//             next_frontier.insert(next_frontier.end(), lf.begin(), lf.end());
+
+//         frontier.swap(next_frontier);
+//     }
+
+//     return level[t] != -1;
+// }
+
+// // ====== SEQUENTIAL ITERATIVE DFS ======
+// int Dinic::parallelDFS(int s, int t, int flow_limit) {
+//     int total_flow = 0;
+
+//     while (true) {
+//         vector<int> path = {s};
+//         vector<int> edge_index = {-1};
+//         vector<int> path_flow = {flow_limit};
+
+//         while (!path.empty()) {
+//             int u = path.back();
+
+//             if (u == t) {
+//                 int pushed = path_flow.back();
+//                 int cur = s;
+//                 for (size_t j = 1; j < path.size(); ++j) {
+//                     int v = path[j];
+//                     int idx = edge_index[j];
+//                     adj[cur][idx].flow += pushed;
+//                     adj[v][adj[cur][idx].rev].flow -= pushed;
+//                     cur = v;
+//                 }
+//                 total_flow += pushed;
+//                 break;
+//             }
+
+//             while (ptr[u] < (int)adj[u].size()) {
+//                 auto& e = adj[u][ptr[u]];
+//                 if (level[e.v] == level[u] + 1 && e.flow < e.cap) {
+//                     int pushed = min(path_flow.back(), e.cap - e.flow);
+//                     path.push_back(e.v);
+//                     edge_index.push_back(ptr[u]);
+//                     path_flow.push_back(pushed);
+//                     ptr[u]++;
+//                     goto next_step;
+//                 }
+//                 ptr[u]++;
+//             }
+
+//             path.pop_back();
+//             if (!edge_index.empty()) edge_index.pop_back();
+//             if (!path_flow.empty()) path_flow.pop_back();
+
+//         next_step:;
+//         }
+
+//         if (path.empty()) break;
+//     }
+
+//     return total_flow;
+// }
+
+// // ====== MAX FLOW LOOP ======
+// int Dinic::maxFlow(int s, int t) {
+//     int flow = 0;
+//     while (parallelBFS(s, t)) {
+//         fill(ptr.begin(), ptr.end(), 0);
+//         int pushed;
+//         while ((pushed = parallelDFS(s, t, INF)) > 0) {
+//             flow += pushed;
+//         }
+//     }
+//     return flow;
+// }
