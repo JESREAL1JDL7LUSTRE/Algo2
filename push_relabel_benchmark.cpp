@@ -15,7 +15,7 @@ int main() {
 
     std::cout << "Graph loaded with " << graph.size() << " vertices." << std::endl;
 
-    GenericPushRelabel  algo(graph.size());
+    ImprovedPushRelabel  algo(graph.size());
 
     for (const auto& pair : graph) {
         int u = pair.first;
