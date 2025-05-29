@@ -1,0 +1,35 @@
+Network 6: The Caenorhabditis elegans worm’s neural network
+
+Watts, D. J., Strogatz, S. H., 1998. Collective dynamics of “small-world” networks. Nature 393, 440-442.
+
+https://toreopsahl.com/datasets/?fbclid=IwY2xjawKk_CdleHRuA2FlbQIxMABicmlkETEwY21hYTg4bzZsT0NUdlFQAR6FwYLtggC3coeL3lrxkVE6r9DHKCTyC-PVLN9O256ASckc_A9l1si_yT__gQ_aem_6NqAMJDKj04tJhILoaVUKQ
+
+
+Network 14: The network of airports in the United States
+
+Colizza, V., Pastor-Satorras, R., Vespignani, A., 2007. Reaction-diffusion processes and metapopulation models in heterogeneous networks. Nature Physics 3, 276-282.
+
+https://toreopsahl.com/datasets/?fbclid=IwY2xjawKk_CdleHRuA2FlbQIxMABicmlkETEwY21hYTg4bzZsT0NUdlFQAR6FwYLtggC3coeL3lrxkVE6r9DHKCTyC-PVLN9O256ASckc_A9l1si_yT__gQ_aem_6NqAMJDKj04tJhILoaVUKQ
+
+
+Bitcoin OTC trust weighted signed network
+
+S. Kumar, F. Spezzano, V.S. Subrahmanian, C. Faloutsos. Edge Weight Prediction in Weighted Signed Networks. IEEE International Conference on Data Mining (ICDM), 2016.
+S. Kumar, B. Hooi, D. Makhija, M. Kumar, V.S. Subrahmanian, C. Faloutsos. REV2: Fraudulent User Prediction in Rating Platforms. 11th ACM International Conference on Web Searchand Data Mining (WSDM), 2018.
+
+https://snap.stanford.edu/data/soc-sign-bitcoin-otc.html
+
+
+https://yzengal.github.io/datasets/
+
+
+Beijing	451,089	985,190	Beij*.road-d (22 MB)	Beij*.road-t (21 MB)	Beij*.co (9 MB)
+
+https://github.com/yzengal/RoadNetwork-China-City/blob/main/Beijing.road-d.tar.gz
+
+
+https://yzengal.github.io/datasets/
+
+Hainan	311,583	648,558	Hain*.road-d (14 MB)	Hain*.road-t (13 MB)	Hain*.co (6 MB)
+
+https://github.com/yzengal/RoadNetwork-China-Province/blob/main/Hainan.road-d.tar.gz
