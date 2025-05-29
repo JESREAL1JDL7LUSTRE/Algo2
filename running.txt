@@ -30,3 +30,7 @@ g++ capacityscaling.cpp graphloader.cpp -o cap.exe -std=c++17 -pthread -I"D:\SCH
 PUSH-RELABEL
 g++ pushrelabel.cpp graphloader.cpp -o push.exe -std=c++17 -pthread -I"D:\SCHOOL\vcpkg\installed\x64-windows\include"
 .\push.exe
+
+
+everything
+g++ graphloader.cpp algofrompapernotimproved.cpp improvingalgo.cpp push_relabel.cpp RunAllAlgo.cpp -o allAlgo.exe -std=c++17 -pthread -I"D:\SCHOOL\vcpkg\installed\x64-windows\include"

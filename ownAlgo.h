@@ -14,7 +14,7 @@
 #define INF INT_MAX
 #define NUM_THREADS static_cast<int>(std::thread::hardware_concurrency())
 
-class Dinic {
+class OwnDinic {
 public:
     struct Edge {
         int v, flow, cap, rev;
@@ -26,7 +26,7 @@ public:
         int flow;
     };
 
-    Dinic(int V);
+    OwnDinic(int V);
     void addEdge(int u, int v, int cap);
     int maxFlow(int s, int t);
 

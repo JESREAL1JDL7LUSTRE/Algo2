@@ -15,7 +15,7 @@
 
 using namespace std;
 
-Dinic::Dinic(int V) : V(V) {
+OwnDinic::OwnDinic(int V) : V(V) {
     adj.resize(V);
     level.resize(V);
     ptr.resize(V);
@@ -28,14 +28,14 @@ Dinic::Dinic(int V) : V(V) {
     }
 }
 
-void Dinic::addEdge(int u, int v, int cap) {
+void OwnDinic::addEdge(int u, int v, int cap) {
     int u_size = adj[u].size();
     int v_size = adj[v].size();
     adj[u].push_back({v, 0, cap, v_size});
     adj[v].push_back({u, 0, 0, u_size});
 }
 
-bool Dinic::bfs(int s, int t) {
+bool OwnDinic::bfs(int s, int t) {
     fill(level.begin(), level.end(), -1);
     level[s] = 0;
     
@@ -57,7 +57,7 @@ bool Dinic::bfs(int s, int t) {
     return level[t] != -1;
 }
 
-bool Dinic::parallelBFS(int s, int t) {
+bool OwnDinic::parallelBFS(int s, int t) {
     // For smaller graphs, use sequential BFS
     if (V < 50000) {
         return bfs(s, t);
@@ -135,7 +135,7 @@ bool Dinic::parallelBFS(int s, int t) {
     return level[t] != -1;
 }
 
-int Dinic::dfs(int u, int t, int flow) {
+int OwnDinic::dfs(int u, int t, int flow) {
     if (u == t) return flow;
     
     for (int& i = ptr[u]; i < adj[u].size(); ++i) {
@@ -156,7 +156,7 @@ int Dinic::dfs(int u, int t, int flow) {
     return 0;
 }
 
-int Dinic::dfs_optimized(int u, int t, int flow, vector<int>& local_ptr) {
+int OwnDinic::dfs_optimized(int u, int t, int flow, vector<int>& local_ptr) {
     if (u == t) return flow;
     
     for (int& i = local_ptr[u]; i < adj[u].size(); ++i) {
@@ -187,7 +187,7 @@ int Dinic::dfs_optimized(int u, int t, int flow, vector<int>& local_ptr) {
     return 0;
 }
 
-void Dinic::parallelDFS(int s, int t, atomic<int>& total_flow) {
+void OwnDinic::parallelDFS(int s, int t, atomic<int>& total_flow) {
     // Adaptive approach - use sequential for small graphs
     if (V < 100000) {
         int flow;
@@ -361,7 +361,7 @@ void Dinic::parallelDFS(int s, int t, atomic<int>& total_flow) {
     }
 }
 
-int Dinic::maxFlow(int s, int t) {
+int OwnDinic::maxFlow(int s, int t) {
     int flow = 0;
     
     // Analyze graph size to determine approach
