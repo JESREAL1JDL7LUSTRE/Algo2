@@ -8,33 +8,21 @@
 #include <cstdlib>
 #include <ctime>
 #include <algorithm>
+#include "harernasAlgo.h"
 
 using namespace std;
 
-#define INF INT_MAX
-#define NUM_THREADS static_cast<int>(thread::hardware_concurrency())
-
-class Dinic {
-    struct Edge {
-        int v, flow, cap, rev;
-    };
-    int V;
-    vector<vector<Edge>> adj;
-    vector<int> level, ptr;
-    mutex level_mutex;  // Used to protect level updates in BFS
-
-public:
-    Dinic(int V) : V(V), adj(V), level(V, -1), ptr(V, 0) {}
+    Dinic::Dinic(int V) : V(V), adj(V), level(V, -1), ptr(V, 0) {}
 
     // Add an edge from u to v with given capacity, and the reverse edge with 0 capacity.
-    void addEdge(int u, int v, int cap) {
+    void Dinic::addEdge(int u, int v, int cap) {
         adj[u].push_back({v, 0, cap, (int)adj[v].size()});
         adj[v].push_back({u, 0, 0, (int)adj[u].size() - 1});
     }
 
     // ---------------- Parallel BFS Worker (as described in the paper) ----------------
     // This worker processes a chunk of the frontier and writes discovered nodes into its local buffer.
-    void bfs_worker(const vector<int>& frontier, int start, int end,
+    void Dinic::bfs_worker(const vector<int>& frontier, int start, int end,
                     vector<vector<int>>& local_frontiers, int thread_id) {
         for (int i = start; i < end; i++) {
             int u = frontier[i];
@@ -51,7 +39,7 @@ public:
 
     // ---------------- Parallel BFS ----------------
     // This function partitions the current frontier among threads, each writes into its local buffer.
-    bool parallelBFS(int s, int t) {
+    bool Dinic::parallelBFS(int s, int t) {
         fill(level.begin(), level.end(), -1);
         vector<int> frontier;
         frontier.push_back(s);
@@ -94,7 +82,7 @@ public:
     }
 
     // ---------------- Sequential DFS (unchanged) ----------------
-    int dfs(int u, int t, int flow) {
+    int Dinic::dfs(int u, int t, int flow) {
         if (u == t)
             return flow;
         for (int &i = ptr[u]; i < adj[u].size(); i++) {
@@ -112,7 +100,7 @@ public:
     }
 
     // ---------------- Max Flow Computation ----------------
-    int maxFlow(int s, int t) {
+    int Dinic::maxFlow(int s, int t) {
         int flow = 0;
         while (parallelBFS(s, t)) {
             fill(ptr.begin(), ptr.end(), 0);
@@ -121,28 +109,3 @@ public:
         }
         return flow;
     }
-};
-
-int main() {
-    // Seed random number generator.
-    srand(time(0));
-    
-    // Set V to 10,000 nodes (for example).
-    int V = 10000;
-    Dinic dinic(V);
-    cout << "Number of nodes: " << V << endl;
-
-    // Build the graph with random capacities between 1 and 50.
-    for (int i = 0; i < V - 1; i++) {
-        dinic.addEdge(i, i + 1, rand() % 50 + 20);
-        if (i + 2 < V)
-            dinic.addEdge(i, i + 2, rand() % 50 + 20);
-
-    }
-
-    cout << "Using " << NUM_THREADS << " threads for BFS." << endl;
-    int max_flow = dinic.maxFlow(0, V - 1);
-    cout << "Max Flow (Parallel BFS from Paper everything else is normal): " << max_flow << endl;
-
-    return 0;
-}
