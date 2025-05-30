@@ -1,5 +1,3 @@
-
-// ownAlgo.h
 #ifndef OPTIMIZED_ALGO_H
 #define OPTIMIZED_ALGO_H
 

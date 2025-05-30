@@ -1,0 +1,8 @@
+Download
+vcpkg
+
+run this on terminal
+g++ improvingalgo.cpp graphloader.cpp own_benchmark.cpp -o main.exe -std=c++17 -pthread -I"Path/to/vcpkg"
+
+then run
+.\main.exe

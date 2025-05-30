@@ -1,5 +1,3 @@
-
-// ownAlgo.cpp
 #include "ownAlgo.h"
 #include <iostream>
 #include <vector>
